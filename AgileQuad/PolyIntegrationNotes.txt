@@ -1,0 +1,38 @@
+G: Integrate polynomial trajectories into kino-framework
+	Q: How/what do you sample for offline computations?
+		A: just positions (and maybe yaw) because those are the diff flat output variables
+			Q: what do you use for vel, acc, jerk, snap at sampled points?
+				A: fix to zero for all
+					P: this will generate very discontinuous complete trajectories that slow and stop at each waypoint
+						Q: Could I just run it like this, then go back and do a final smoothing with the whole thing?
+							Do I expect this to do better than Richter's? How does this deal with collisions?
+				A: randomly sample for each pos
+					P: see answer below
+				A: Leave undefined
+					P: then you can't determine cost values for any trajectories offline 
+						(unless you came up with some different constraint equation...)
+			Q: how do you connect sampled states offline (and online)?
+				A: pairwise, as is done in the basic framework
+					P: this leads to the question on what to do about derivatives at sampled points (see above)
+				A: sets of size m, as in connect m random points from the sampled states and calc costs for each set
+					Q: still leaves you question of how to set derivatives at start and end of sets
+					Q: is m fixed? How do you decide to what to fix it? Can it somehow be variable
+					Q: this would cause the number of possible offline calcs to be m-permutations of n. Much larger than n^2.
+						Would this be equivalent (or similar) to just making a much larger state space?
+					Q: how would the m-sets be incorporated into the motion planner? 
+						Would machine learning try to estimate the best m-set to connect and perform a new optimization?
+						What if that first m-set is in collision? Modify the m-set or go to next best?
+				A: Use a non-cost based connection, like distance, similar to what's used in Richter
+					Q: is this really using the kino-framework anymore?
+						 Wouldn't this just reproduce Richter with FMT instead of RRT?  
+		A: sample pos, vel, acc, jerk, snap
+			P: this creates a very large "effective" state space. 15-20 dimensional. Larger than unsimplified dynamics
+
+G: Come up with different framework for using polynomial trajectories
+	A: use an ever increasing number of randomly sampled intermediate notes. Example: attempt to connect start directly to goal. If in collision, randomly select N points in the state space. Attempt start-intermediate-goal for all N points as the intermediate. If any are collision free, take the lowest cost. If all are in collision, iterate with a second level of N intermediate nodes.
+
+G: Use kino-framework without polynomial trajectories
+
+G: Scrap both the kino-framework and polynomial trajectories
+
+Note: Polynomial trajectory is a path smoother, not motion planner. Cost is not sum of component cost but optimization whole path.

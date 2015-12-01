@@ -1,0 +1,791 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>dubins_reachability_classifier</title><meta name="generator" content="MATLAB 8.0"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2013-12-12"><meta name="DC.source" content="dubins_reachability_classifier.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1></h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">CS 229 Machine Learning Project</a></li><li><a href="#3">Enter Input</a></li><li><a href="#4">Dubin's Car</a></li><li><a href="#5">Process Training Data and Testing Data</a></li><li><a href="#6">Compute Reachability Set Approximations for Various Cost Thresholds</a></li><li><a href="#8">Label Training Data</a></li><li><a href="#9">Run the SVM Algorithm</a></li><li><a href="#10">Apply the Fit SVM Parameters to the Test Set from Test Set Data File</a></li><li><a href="#11">Plot the Results</a></li><li><a href="#12">Report the Results</a></li><li><a href="#14">Adjust and Save Plots</a></li></ul></div><h2>CS 229 Machine Learning Project<a name="1"></a></h2><p>Ross Allen Ashley A. Clark Joseph A. Starek November 14th, 2013</p><pre class="codeinput"><span class="keyword">function</span> dubins_reachability_classifier
+</pre><pre class="codeinput">clc; close <span class="string">all</span>; clear <span class="string">all</span>;
+</pre><h2>Enter Input<a name="3"></a></h2><pre class="codeinput"><span class="comment">% Kernel function options:</span>
+<span class="comment">% 'linear'      &#8212; Linear kernel, meaning dot product:   K(x,z) = x'*z.</span>
+<span class="comment">% 'quadratic'   &#8212; Quadratic kernel:                     K(x,z) = (x'*z + c)^2</span>
+<span class="comment">% 'polynomial'  &#8212; Polynomial kernel (default order 3):  K(x,z) = (x'*z + c)^(polyorder)</span>
+<span class="comment">% 'rbf'         &#8212; Gaussian Radial Basis Function kernel with a default scaling factor, sigma, of 1: K(x,z) = exp( -(1/(2*rbf_sigma^2))*||x - z||</span>
+<span class="comment">% 'mlp'         &#8212; Multilayer Perceptron kernel with default scale [1 &#8211;1].  Uses layers of sigmoid functions, e.g. phi(v_i) = tanh(v_i).</span>
+<span class="comment">% @kfun         &#8212; Function handle to a kernel function. A kernel function must be of the form: function K = kfun(U, V)</span>
+<span class="comment">%                   The returned value, K, is a matrix of size M-by-N, where U and V have M and N rows respectively</span>
+<span class="comment">%</span>
+<span class="comment">% Method options:</span>
+<span class="comment">% 'QP'          &#8212; Quadratic programming. The classifier is a 2-norm soft-margin SVM. Create QP 'options' with 'optimset'.</span>
+<span class="comment">% 'SMO'         &#8212; Sequential Minimal Optimization. Create SMO 'options' with 'statset'.</span>
+<span class="comment">% 'LS'          &#8212; Least squares.</span>
+
+training_filename   = <span class="string">'Data/DubinsTrainingData-CS229Final-Dec11-1.txt'</span>; 	<span class="comment">% Name and extension of training data file</span>
+testing_filename    = <span class="string">'Data/DubinsTestingData-CS229Final-Dec11-1.txt'</span>;    	<span class="comment">% Name and extension of testing data file</span>
+
+autoscale           = true;             <span class="comment">% If true, automatically centers data at their mean and scales to unit standard deviation before training.</span>
+C                   = 1;                <span class="comment">% Value of the box constraint C for the soft margin. C can be a scalar, or a vector of the same length as the training data.</span>
+kernel_cachelimit   = 5000;             <span class="comment">% Value that specifies the size of the kernel matrix cache for the SMO training method.</span>
+kernel_function     = <span class="string">'polynomial'</span>;     <span class="comment">% Kernel function used to map the training data into kernel space.</span>
+violation_level     = 0;                <span class="comment">% A value in [0,1) for the fraction of samples allowed to violate the KKT conditions for the SMO training method.</span>
+method              = <span class="string">'SMO'</span>;            <span class="comment">% Method used to find the separating hyperplane.</span>
+mlp_params          = [1, -1];          <span class="comment">% Parameters of the Multilayer Perceptron (mlp) kernel.</span>
+display             = <span class="string">'final'</span>;          <span class="comment">% String that specifies the info that is displayed as the algorithm runs: 'off', 'iter', or 'final'.</span>
+max_iter            = 50000;            <span class="comment">% Maximum number of iterations of the main loop.</span>
+polyorder           = 4;                <span class="comment">% Order of the polynomial kernel.</span>
+rbf_sigma           = 1;                <span class="comment">% Scaling factor (sigma) in the radial basis function kernel.</span>
+showplot            = true;             <span class="comment">% Indicates whether to plot the grouped data and separating line.</span>
+kkt_tol             = 1e-3;             <span class="comment">% Tolerance with which the KKT conditions are checked for the SMO training method.</span>
+
+validation_mode     = <span class="string">'none'</span>;       	<span class="comment">% Type of validation method to use: 'holdout', 'kFold', 'leave_one_out', 'none'</span>
+plot_mode           = <span class="string">'publication'</span>;    <span class="comment">% Mode to use for displaying plots: 'display', 'publication'</span>
+sigma_threshold     = [-1, 0, 1];       <span class="comment">% Signed number of standard deviations from mean cost for setting the reachability cost threshold</span>
+holdout_percent     = 30;              	<span class="comment">% Percentage of training data to hold out for Holdout Cross-Validation</span>
+K                   = 10;              	<span class="comment">% Number of training data partitions for K-Fold Cross-Validation</span>
+</pre><h2>Dubin's Car<a name="4"></a></h2><pre class="codeinput">dubins_reachable_set( linspace(pi/8,pi/2,6), 1, 1 );
+</pre><img vspace="5" hspace="5" src="dubins_reachability_classifier_01.png" alt=""> <h2>Process Training Data and Testing Data<a name="5"></a></h2><pre class="codeinput"><span class="comment">% Training labels</span>
+TRUE        = 1;
+FALSE       = -1;
+
+<span class="comment">% Test if training and test data files exist</span>
+<span class="keyword">if</span> fopen( training_filename ) == -1
+    error(<span class="string">'Be sure to enter a valid filename for the training file.'</span>);
+<span class="keyword">end</span>
+test_file_exists = not( fopen( testing_filename ) == -1 );
+
+<span class="comment">% Read in and plot input training data</span>
+[ delta_x, delta_y, delta_theta, cost, ~ ] = read_data( training_filename );
+
+<span class="comment">% Extract the matrix of feature vectors from the matrix of states</span>
+training_data = extract_features( delta_x, delta_y, delta_theta );
+m   = size(training_data,1);
+n   = size(training_data,2);
+
+<span class="comment">% Read in and plot input testing data</span>
+<span class="keyword">if</span> test_file_exists
+    [ delta_x_test, delta_y_test, delta_theta_test, cost_test, run_number_test ] = read_data( testing_filename );
+    m_test = length(cost_test);
+<span class="keyword">end</span>
+
+<span class="comment">% Extract the matrix of feature vectors from the matrix of states</span>
+<span class="comment">%testing_data = extract_features( delta_x_test, delta_y_test, delta_theta_test );</span>
+</pre><img vspace="5" hspace="5" src="dubins_reachability_classifier_02.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_03.png" alt=""> <h2>Compute Reachability Set Approximations for Various Cost Thresholds<a name="6"></a></h2><pre class="codeinput"><span class="keyword">for</span> sigma = sigma_threshold
+</pre><h2>Label Training Data<a name="8"></a></h2><pre class="codeinput">    <span class="comment">% Determine reachability within cost threshold</span>
+    cost_threshold          = mean(cost) + sigma*std(cost);
+    training_reachability   = FALSE.*ones(m,1);
+    training_reachability( cost &lt;= cost_threshold ) = TRUE;
+</pre><h2>Run the SVM Algorithm<a name="9"></a></h2><pre class="codeinput">    train_options = struct( <span class="keyword">...</span>
+        <span class="string">'autoscale'</span>, autoscale, <span class="keyword">...</span>
+        <span class="string">'C'</span>, C, <span class="keyword">...</span>
+        <span class="string">'kernel_cachelimit'</span>, kernel_cachelimit, <span class="keyword">...</span>
+        <span class="string">'kernel_function'</span>, kernel_function, <span class="keyword">...</span>
+        <span class="string">'violation_level'</span>, violation_level, <span class="keyword">...</span>
+        <span class="string">'method'</span>, method, <span class="keyword">...</span>
+        <span class="string">'mlp_params'</span>, mlp_params, <span class="keyword">...</span>
+        <span class="string">'display'</span>, display, <span class="keyword">...</span>
+        <span class="string">'max_iter'</span>, max_iter, <span class="keyword">...</span>
+        <span class="string">'polyorder'</span>, polyorder, <span class="keyword">...</span>
+        <span class="string">'rbf_sigma'</span>, rbf_sigma, <span class="keyword">...</span>
+        <span class="string">'showplot'</span>, showplot, <span class="keyword">...</span>
+        <span class="string">'kkt_tol'</span>, kkt_tol <span class="keyword">...</span>
+    );
+    test_options = struct( <span class="keyword">...</span>
+        <span class="string">'showplot'</span>, showplot <span class="keyword">...</span>
+    );
+
+    <span class="comment">% Run SVM on portions of the training data, using one of the cross-validation techniques</span>
+    <span class="keyword">if</span> strcmpi(validation_mode, <span class="string">'holdout'</span>),
+        [svm_output, n_errors, error_percent] = <span class="keyword">...</span>
+            holdOut_cross_validation( holdout_percent, training_data, training_reachability, train_options, test_options );
+        error_string            = <span class="string">'Number of Errors (Held-out Data)'</span>;
+        error_percent_string    = <span class="string">'Percentage Error (Held-out Data)'</span>;
+
+    <span class="keyword">elseif</span> strcmpi(validation_mode, <span class="string">'kFold'</span>)
+        [svm_output, n_errors, error_percent] = <span class="keyword">...</span>
+            kFold_cross_validation( K, training_data, training_reachability, train_options, test_options );
+        error_string            = [<span class="string">'Number of Errors (Avg over each (1/'</span>, num2str(k), <span class="string">')-th of Data)'</span>];
+        error_percent_string    = [<span class="string">'Percentage Error (Avg over each (1/'</span>, num2str(k), <span class="string">')-th of Data)'</span>];
+
+    <span class="keyword">elseif</span> strcmpi(validation_mode, <span class="string">'leave_one_out'</span>)
+        [svm_output, n_errors, error_percent] = <span class="keyword">...</span>
+            leaveOneOut_cross_validation( training_data, training_reachability, train_options, test_options );
+        error_string            = <span class="string">'Number of Errors (Avg over each Data Pt)'</span>;
+        error_percent_string    = <span class="string">'Percentage Error (Avg over each Data Pt)'</span>;
+
+    <span class="keyword">elseif</span> strcmpi(validation_mode, <span class="string">'none'</span>)
+        svm_output              = { svm_train( training_data, training_reachability, train_options ) };
+        n_errors                = NaN;
+        error_percent           = NaN;
+        error_string            = <span class="string">'Number of Validation Errors (N/A)'</span>;
+        error_percent_string    = <span class="string">'Percentage Validation Error (N/A)'</span>;
+    <span class="keyword">end</span>
+</pre><pre class="codeoutput">Sequential Minimal Optimization method finished.
+Sequential Minimal Optimization status:
+Number of iterations: 1997
+Value of stopping criterion: 0.000963
+Value of objective function: 0.009659
+---------------------------
+</pre><pre class="codeoutput">Sequential Minimal Optimization method finished.
+Sequential Minimal Optimization status:
+Number of iterations: 3204
+Value of stopping criterion: 0.000847
+Value of objective function: 0.009813
+---------------------------
+</pre><pre class="codeoutput">Sequential Minimal Optimization method finished.
+Sequential Minimal Optimization status:
+Number of iterations: 1917
+Value of stopping criterion: 0.000965
+Value of objective function: 0.002533
+---------------------------
+</pre><h2>Apply the Fit SVM Parameters to the Test Set from Test Set Data File<a name="10"></a></h2><pre class="codeinput">    <span class="comment">% Apply classifier to test data</span>
+    <span class="keyword">if</span> test_file_exists
+        test_reachability   = FALSE.*ones(m_test,1);
+        prediction_times    = zeros(m_test,1);
+
+        <span class="keyword">for</span> j = 1:m_test
+            tic;
+            test_data_point         = extract_features( delta_x_test(j), delta_y_test(j), delta_theta_test(j) );
+            test_reachability(j)	= is_reachable( svm_output, test_data_point );
+            prediction_times(j)     = toc;
+        <span class="keyword">end</span>
+        avg_prediction_time = mean(prediction_times);
+        [n_test_errors, test_error_percent] = count_errors( test_reachability, (cost_test &lt; cost_threshold) );
+    <span class="keyword">end</span>
+</pre><h2>Plot the Results<a name="11"></a></h2><pre class="codeinput">    <span class="comment">% Plot the set of reachable states</span>
+    figure;
+    <span class="keyword">if</span> test_file_exists
+        subplot(1,2,1);
+    <span class="keyword">end</span>
+    hold <span class="string">on</span>;
+    scatter3( delta_x( training_reachability == TRUE ), delta_y( training_reachability == TRUE ), delta_theta( training_reachability == TRUE ), <span class="string">'ob'</span> );
+    scatter3( delta_x( training_reachability == FALSE ), delta_y( training_reachability == FALSE ), delta_theta( training_reachability == FALSE ), <span class="string">'xr'</span> );
+    view([43, 22]);
+    box <span class="string">off</span>; grid <span class="string">on</span>;
+    legend(<span class="string">'Reachable'</span>, <span class="string">'Unreachable'</span>, <span class="string">'Location'</span>, <span class="string">'SouthOutside'</span>);
+    xlabel(<span class="string">'\deltax [m]'</span>);
+    ylabel(<span class="string">'\deltay [m]'</span>);
+    zlabel(<span class="string">'\delta\theta [rad]'</span>);
+    title([<span class="string">'Set of '</span>, num2str(cost_threshold), <span class="string">'-Cost Reachable States'</span>]);
+
+    <span class="keyword">if</span> test_file_exists
+        subplot(1,2,2); hold <span class="string">on</span>;
+        scatter3( delta_x_test( test_reachability == true ), delta_y_test( test_reachability == true ), delta_theta_test( test_reachability == true ), <span class="string">'ob'</span> );
+        scatter3( delta_x_test( test_reachability == false ), delta_y_test( test_reachability == false ), delta_theta_test( test_reachability == false ), <span class="string">'xr'</span> );
+        view([43, 22]);
+        box <span class="string">off</span>; grid <span class="string">on</span>;
+        legend(<span class="string">'Reachable'</span>, <span class="string">'Unreachable'</span>, <span class="string">'Location'</span>, <span class="string">'SouthOutside'</span>);
+        xlabel(<span class="string">'\deltax [m]'</span>);
+        ylabel(<span class="string">'\deltay [m]'</span>);
+        zlabel(<span class="string">'\delta\theta [rad]'</span>);
+        title([<span class="string">'Estimate of the '</span>, num2str(cost_threshold), <span class="string">'-Cost Reachable States'</span>]);
+
+        figure;
+        hold <span class="string">on</span>;
+        plot( run_number_test( test_reachability == true ), cost_test( test_reachability == true ), <span class="string">'ob'</span> );
+        plot( run_number_test( test_reachability == false ), cost_test( test_reachability == false ), <span class="string">'xr'</span> );
+        V = axis;
+        plot( [V(1), V(2)], cost_threshold.*ones(2,1), <span class="string">'-k'</span>, <span class="string">'Linewidth'</span>, 2 );
+        xlabel(<span class="string">'Run'</span>);
+        ylabel(<span class="string">'Cost'</span>);
+        title([<span class="string">'Training Data Costs with Reachability Cost Threshold '</span>, num2str(cost_threshold), <span class="string">' (\sigma = '</span>, num2str(sigma), <span class="string">')'</span>]);
+        grid <span class="string">on</span>;
+    <span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="dubins_reachability_classifier_04.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_05.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_06.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_07.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_08.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_09.png" alt=""> <h2>Report the Results<a name="12"></a></h2><pre class="codeinput">    fprintf( 1, <span class="string">'\nCost Threshold: \t\t\t%f (sigma = %f)\n'</span>, cost_threshold, sigma );
+    fprintf( 1, <span class="string">'Validation Method: \t\t\t%s\n'</span>, validation_mode );
+    fprintf( 1, <span class="string">'%s: \t%d\n'</span>, error_string, n_errors );
+    fprintf( 1, <span class="string">'%s: \t%f%%\n'</span>, error_percent_string, error_percent );
+    <span class="keyword">if</span> test_file_exists
+        fprintf( 1, <span class="string">'Number of Test Set Errors: \t%d\n'</span>, n_test_errors );
+        fprintf( 1, <span class="string">'Percentage Test Set Errors: %f%%\n'</span>, test_error_percent );
+        fprintf( 1, <span class="string">'Average Prediction Time: \t%f\n'</span>, avg_prediction_time );
+    <span class="keyword">end</span>
+    fprintf( 1, <span class="string">'\n'</span>);
+</pre><pre class="codeoutput">
+Cost Threshold: 			11.882917 (sigma = -1.000000)
+Validation Method: 			none
+Number of Validation Errors (N/A): 	NaN
+Percentage Validation Error (N/A): 	NaN%
+Number of Test Set Errors: 	4
+Percentage Test Set Errors: 4.166667%
+Average Prediction Time: 	0.001977
+
+</pre><pre class="codeoutput">
+Cost Threshold: 			17.346771 (sigma = 0.000000)
+Validation Method: 			none
+Number of Validation Errors (N/A): 	NaN
+Percentage Validation Error (N/A): 	NaN%
+Number of Test Set Errors: 	7
+Percentage Test Set Errors: 7.291667%
+Average Prediction Time: 	0.001853
+
+</pre><pre class="codeoutput">
+Cost Threshold: 			22.810626 (sigma = 1.000000)
+Validation Method: 			none
+Number of Validation Errors (N/A): 	NaN
+Percentage Validation Error (N/A): 	NaN%
+Number of Test Set Errors: 	3
+Percentage Test Set Errors: 3.125000%
+Average Prediction Time: 	0.001332
+
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><h2>Adjust and Save Plots<a name="14"></a></h2><pre class="codeinput"><span class="keyword">if</span> test_file_exists
+    figure_names = {<span class="string">'Dubins_reachability_set_example'</span>, <span class="string">'Dubins_training_data_feasibility'</span>, <span class="string">'Dubins_test_data_feasibility'</span>, <span class="keyword">...</span>
+        <span class="string">'Dubins_reachability_-1sigma'</span>, <span class="string">'Dubins_cost_reachability_-1sigma'</span>, <span class="keyword">...</span>
+        <span class="string">'Dubins_reachability_0sigma'</span>, <span class="string">'Dubins_cost_reachability_0sigma'</span>, <span class="keyword">...</span>
+        <span class="string">'Dubins_reachability_1sigma'</span>, <span class="string">'Dubins_cost_reachability_1sigma'</span>};
+<span class="keyword">else</span>
+    figure_names = {<span class="string">'Dubins_reachability_set_example'</span>, <span class="string">'Dubins_training_data_feasibility'</span>, <span class="keyword">...</span>
+        <span class="string">'Dubins_reachability_-1sigma'</span>, <span class="keyword">...</span>
+        <span class="string">'Dubins_reachability_0sigma'</span>, <span class="keyword">...</span>
+        <span class="string">'Dubins_reachability_1sigma'</span>};
+<span class="keyword">end</span>
+
+set_plot_properties( <span class="string">'mode'</span>, plot_mode );
+savefigs(<span class="string">'Format'</span>, <span class="string">'fig'</span>, <span class="string">'Save'</span>, <span class="string">'all'</span>, <span class="string">'SaveDir'</span>, <span class="string">'Results'</span>, <span class="string">'ZipName'</span>, <span class="string">'Dubins_figs'</span>, <span class="string">'SaveAs'</span>, figure_names );
+savefigs(<span class="string">'Format'</span>, <span class="string">'png'</span>, <span class="string">'Save'</span>, <span class="string">'all'</span>, <span class="string">'SaveDir'</span>, <span class="string">'Results'</span>, <span class="string">'ZipName'</span>, <span class="string">'Dubins_pngs'</span>, <span class="string">'SaveAs'</span>, figure_names );
+</pre><pre class="codeoutput"> 
+Figures saved...
+Figures zipped...
+Done...
+ 
+ 
+Figures saved...
+Figures zipped...
+Done...
+ 
+</pre><img vspace="5" hspace="5" src="dubins_reachability_classifier_10.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_11.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_12.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_13.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_14.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_15.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_16.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_17.png" alt=""> <img vspace="5" hspace="5" src="dubins_reachability_classifier_18.png" alt=""> <pre class="codeinput"><span class="keyword">end</span>
+
+
+<span class="keyword">function</span> [ delta_x, delta_y, delta_theta, cost, run_number ] = read_data( filename )
+    <span class="comment">% Read in training data</span>
+    fid         = fopen( filename );
+    data        = textscan( fid, <span class="string">'%d%f%f%f%f%d'</span>, <span class="string">'Headerlines'</span>, 0, <span class="string">'Delimiter'</span>, <span class="string">';'</span> );
+    run_number  = data{1};
+    delta_x     = data{2};
+    delta_y     = data{3};
+    delta_theta	= data{4}.*(pi/180);
+    cost        = data{5}.*(4/pi);
+    exit_flag   = data{6};
+
+    <span class="comment">%data{1} = double(data{1}); data{6} = double(data{6});</span>
+    <span class="comment">%data{5} = data{5}.*(4/pi);</span>
+    <span class="comment">%dlmwrite('DubinsTrainingData-CS229Final-Dec11-1.txt',cell2mat(data),'delimiter',';','precision',5);</span>
+
+    <span class="comment">% Visualize infeasible data</span>
+    figure; hold <span class="string">on</span>;
+    scatter3( delta_x( exit_flag == 1 ), delta_y( exit_flag == 1 ), delta_theta( exit_flag == 1 ), <span class="string">'.b'</span> );
+    scatter3( delta_x( exit_flag ~= 1 ), delta_y( exit_flag ~= 1 ), delta_theta( exit_flag ~= 1 ), <span class="string">'sk'</span>, <span class="string">'MarkerFaceColor'</span>, <span class="string">'r'</span> );
+    view([43, 22]);
+    box <span class="string">off</span>; grid <span class="string">on</span>;
+    legend(<span class="string">'Feasible'</span>, <span class="string">'Infeasible'</span>, <span class="string">'Location'</span>, <span class="string">'EastOutside'</span>);
+    xlabel(<span class="string">'\deltax [m]'</span>);
+    ylabel(<span class="string">'\deltay [m]'</span>);
+    zlabel(<span class="string">'\delta\theta [rad]'</span>);
+    title(<span class="string">'Distribution of Input Data'</span>);
+
+    <span class="comment">% Use only feasible training data: reject any 2PBVP solutions that did not converge</span>
+    delta_x     = delta_x( exit_flag == 1 );
+    delta_y     = delta_y( exit_flag == 1 );
+    delta_theta	= delta_theta( exit_flag == 1 );
+    cost        = cost( exit_flag == 1 );
+    run_number  = 1:length(delta_x);
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> feature_matrix = extract_features( delta_x, delta_y, delta_theta )
+    w_x         = 1;
+    w_y         = 1;
+    w_theta     = 1;
+
+    feature_matrix = [ <span class="keyword">...</span>
+        delta_x, <span class="keyword">...</span>
+        delta_y, <span class="keyword">...</span>
+        delta_theta, <span class="keyword">...</span>
+        abs(delta_x), <span class="keyword">...</span>
+        abs(delta_y), <span class="keyword">...</span>
+        abs(delta_theta), <span class="keyword">...</span>
+        delta_x.^2, <span class="keyword">...</span>
+        delta_y.^2, <span class="keyword">...</span>
+        delta_theta.^2, <span class="keyword">...</span>
+        delta_x.*delta_y <span class="keyword">...</span>
+        delta_x.*delta_theta, <span class="keyword">...</span>
+        delta_y.*delta_theta, <span class="keyword">...</span>
+        sin(delta_theta), <span class="keyword">...</span>
+        cos(delta_theta), <span class="keyword">...</span>
+        tan(delta_theta), <span class="keyword">...</span>
+        sin(delta_theta).^2, <span class="keyword">...</span>
+        cos(delta_theta).^2, <span class="keyword">...</span>
+        tan(delta_theta).^2, <span class="keyword">...</span>
+        delta_x.*sin(delta_theta), <span class="keyword">...</span>
+        delta_y.*sin(delta_theta), <span class="keyword">...</span>
+        delta_x.*cos(delta_theta), <span class="keyword">...</span>
+        delta_y.*cos(delta_theta), <span class="keyword">...</span>
+        delta_x.*tan(delta_theta), <span class="keyword">...</span>
+        delta_y.*tan(delta_theta), <span class="keyword">...</span>
+        sqrt(delta_x.^2 + delta_y.^2), <span class="keyword">...</span>
+        delta_theta.*sqrt(delta_x.^2 + delta_y.^2), <span class="keyword">...</span>
+        sqrt((w_x.*delta_x).^2 + (w_y.*delta_y).^2 + (w_theta.*delta_theta).^2), <span class="keyword">...</span>
+    ];
+<span class="keyword">end</span>
+
+<span class="keyword">function</span> dubins_reachable_set(T, rho_min, v)
+
+    Npoints = 100;
+    omega   = v/rho_min;
+    T       = sort( max( min(T, (pi/2)/omega), 0) );
+
+    figure; hold <span class="string">on</span>;
+    xlabel(<span class="string">'x'</span>);
+    ylabel(<span class="string">'y'</span>, <span class="string">'Rotation'</span>, 0);
+    <span class="keyword">if</span> numel(T) == 1
+        title([<span class="string">'Reachable Set for the Dubin''s Car (\rho_{min} = '</span>, num2str(rho_min), <span class="string">', v = '</span>, num2str(v), <span class="string">') for Horizon Time T = '</span>, num2str(T)]);
+    <span class="keyword">else</span>
+        title([<span class="string">'Reachable Sets for the Dubin''s Car (\rho_{min} = '</span>, num2str(rho_min), <span class="string">', v = '</span>, num2str(v), <span class="string">') for Horizon Times T \leq '</span>, num2str(T(end))]);
+    <span class="keyword">end</span>
+    grid <span class="string">on</span>;
+
+    <span class="keyword">for</span> Thorizon = T(1:1:end-1)
+        tau         = linspace( 0, Thorizon, Npoints );
+        x_right     = rho_min.*(1 - cos(omega*tau));
+        y_right     = rho_min.*sin(omega*tau);
+
+        u_1         = y_right./rho_min;
+        u_2         = (rho_min - x_right)./rho_min;
+        x_topright  = x_right + u_1.*( Thorizon - tau );
+        y_topright  = y_right + u_2.*( Thorizon - tau );
+
+        plot( x_topright, y_topright, <span class="string">'--k'</span>, -x_topright, y_topright, <span class="string">'--k'</span> );
+        text( x_topright(end), y_topright(end), [<span class="string">'T = '</span>, num2str(Thorizon,<span class="string">'%3.1f'</span>)], <span class="string">'VerticalAlignment'</span>, <span class="string">'Top'</span> );
+    <span class="keyword">end</span>
+
+    Thorizon    = T(end);
+    tau         = linspace( 0, Thorizon, Npoints );
+    x_right     = rho_min.*(1 - cos(omega*tau));
+    y_right     = rho_min.*sin(omega*tau);
+
+    u_1         = y_right./rho_min;
+    u_2         = (rho_min - x_right)./rho_min;
+    x_topright  = x_right + u_1.*( Thorizon - tau );
+    y_topright  = y_right + u_2.*( Thorizon - tau );
+
+    plot( x_right, y_right, <span class="string">'-b'</span>, -x_right, y_right, <span class="string">'-b'</span> );
+    plot( x_topright, y_topright, <span class="string">'-b'</span>, -x_topright, y_topright, <span class="string">'-b'</span> );
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2012b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+
+%% CS 229 Machine Learning Project
+% Ross Allen
+% Ashley A. Clark
+% Joseph A. Starek
+% November 14th, 2013
+
+function dubins_reachability_classifier
+clc; close all; clear all;
+
+%% Enter Input
+
+% Kernel function options:
+% 'linear'      — Linear kernel, meaning dot product:   K(x,z) = x'*z.
+% 'quadratic'   — Quadratic kernel:                     K(x,z) = (x'*z + c)^2
+% 'polynomial'  — Polynomial kernel (default order 3):  K(x,z) = (x'*z + c)^(polyorder)
+% 'rbf'         — Gaussian Radial Basis Function kernel with a default scaling factor, sigma, of 1: K(x,z) = exp( -(1/(2*rbf_sigma^2))*||x - z||
+% 'mlp'         — Multilayer Perceptron kernel with default scale [1 –1].  Uses layers of sigmoid functions, e.g. phi(v_i) = tanh(v_i).
+% @kfun         — Function handle to a kernel function. A kernel function must be of the form: function K = kfun(U, V)
+%                   The returned value, K, is a matrix of size M-by-N, where U and V have M and N rows respectively
+%
+% Method options:
+% 'QP'          — Quadratic programming. The classifier is a 2-norm soft-margin SVM. Create QP 'options' with 'optimset'.
+% 'SMO'         — Sequential Minimal Optimization. Create SMO 'options' with 'statset'.
+% 'LS'          — Least squares.
+
+training_filename   = 'Data/DubinsTrainingData-CS229Final-Dec11-1.txt'; 	% Name and extension of training data file
+testing_filename    = 'Data/DubinsTestingData-CS229Final-Dec11-1.txt';    	% Name and extension of testing data file
+
+autoscale           = true;             % If true, automatically centers data at their mean and scales to unit standard deviation before training.
+C                   = 1;                % Value of the box constraint C for the soft margin. C can be a scalar, or a vector of the same length as the training data.
+kernel_cachelimit   = 5000;             % Value that specifies the size of the kernel matrix cache for the SMO training method.
+kernel_function     = 'polynomial';     % Kernel function used to map the training data into kernel space.
+violation_level     = 0;                % A value in [0,1) for the fraction of samples allowed to violate the KKT conditions for the SMO training method.
+method              = 'SMO';            % Method used to find the separating hyperplane.
+mlp_params          = [1, -1];          % Parameters of the Multilayer Perceptron (mlp) kernel.
+display             = 'final';          % String that specifies the info that is displayed as the algorithm runs: 'off', 'iter', or 'final'.
+max_iter            = 50000;            % Maximum number of iterations of the main loop.
+polyorder           = 4;                % Order of the polynomial kernel.
+rbf_sigma           = 1;                % Scaling factor (sigma) in the radial basis function kernel.
+showplot            = true;             % Indicates whether to plot the grouped data and separating line.
+kkt_tol             = 1e-3;             % Tolerance with which the KKT conditions are checked for the SMO training method.
+
+validation_mode     = 'none';       	% Type of validation method to use: 'holdout', 'kFold', 'leave_one_out', 'none'
+plot_mode           = 'publication';    % Mode to use for displaying plots: 'display', 'publication'
+sigma_threshold     = [-1, 0, 1];       % Signed number of standard deviations from mean cost for setting the reachability cost threshold
+holdout_percent     = 30;              	% Percentage of training data to hold out for Holdout Cross-Validation
+K                   = 10;              	% Number of training data partitions for K-Fold Cross-Validation
+
+%% Dubin's Car
+dubins_reachable_set( linspace(pi/8,pi/2,6), 1, 1 );
+
+%% Process Training Data and Testing Data
+
+% Training labels
+TRUE        = 1;
+FALSE       = -1;
+
+% Test if training and test data files exist
+if fopen( training_filename ) == -1
+    error('Be sure to enter a valid filename for the training file.');
+end
+test_file_exists = not( fopen( testing_filename ) == -1 );
+
+% Read in and plot input training data
+[ delta_x, delta_y, delta_theta, cost, ~ ] = read_data( training_filename );
+
+% Extract the matrix of feature vectors from the matrix of states
+training_data = extract_features( delta_x, delta_y, delta_theta );
+m   = size(training_data,1);
+n   = size(training_data,2);
+
+% Read in and plot input testing data
+if test_file_exists
+    [ delta_x_test, delta_y_test, delta_theta_test, cost_test, run_number_test ] = read_data( testing_filename );
+    m_test = length(cost_test);
+end
+
+% Extract the matrix of feature vectors from the matrix of states
+%testing_data = extract_features( delta_x_test, delta_y_test, delta_theta_test );
+
+
+%% Compute Reachability Set Approximations for Various Cost Thresholds
+
+for sigma = sigma_threshold
+
+    %% Label Training Data
+
+    % Determine reachability within cost threshold
+    cost_threshold          = mean(cost) + sigma*std(cost);
+    training_reachability   = FALSE.*ones(m,1);
+    training_reachability( cost <= cost_threshold ) = TRUE;
+
+
+    %% Run the SVM Algorithm
+    train_options = struct( ...
+        'autoscale', autoscale, ...
+        'C', C, ...
+        'kernel_cachelimit', kernel_cachelimit, ...
+        'kernel_function', kernel_function, ...
+        'violation_level', violation_level, ...
+        'method', method, ...
+        'mlp_params', mlp_params, ...
+        'display', display, ...
+        'max_iter', max_iter, ...
+        'polyorder', polyorder, ...
+        'rbf_sigma', rbf_sigma, ...
+        'showplot', showplot, ...
+        'kkt_tol', kkt_tol ...
+    );
+    test_options = struct( ...
+        'showplot', showplot ...
+    );
+
+    % Run SVM on portions of the training data, using one of the cross-validation techniques
+    if strcmpi(validation_mode, 'holdout'),
+        [svm_output, n_errors, error_percent] = ...
+            holdOut_cross_validation( holdout_percent, training_data, training_reachability, train_options, test_options );
+        error_string            = 'Number of Errors (Held-out Data)';
+        error_percent_string    = 'Percentage Error (Held-out Data)';
+
+    elseif strcmpi(validation_mode, 'kFold')
+        [svm_output, n_errors, error_percent] = ...
+            kFold_cross_validation( K, training_data, training_reachability, train_options, test_options );
+        error_string            = ['Number of Errors (Avg over each (1/', num2str(k), ')-th of Data)'];
+        error_percent_string    = ['Percentage Error (Avg over each (1/', num2str(k), ')-th of Data)'];
+
+    elseif strcmpi(validation_mode, 'leave_one_out')
+        [svm_output, n_errors, error_percent] = ...
+            leaveOneOut_cross_validation( training_data, training_reachability, train_options, test_options );
+        error_string            = 'Number of Errors (Avg over each Data Pt)';
+        error_percent_string    = 'Percentage Error (Avg over each Data Pt)';
+        
+    elseif strcmpi(validation_mode, 'none')
+        svm_output              = { svm_train( training_data, training_reachability, train_options ) };
+        n_errors                = NaN;
+        error_percent           = NaN;
+        error_string            = 'Number of Validation Errors (N/A)';
+        error_percent_string    = 'Percentage Validation Error (N/A)';
+    end
+
+    
+    %% Apply the Fit SVM Parameters to the Test Set from Test Set Data File
+    
+    % Apply classifier to test data
+    if test_file_exists
+        test_reachability   = FALSE.*ones(m_test,1);
+        prediction_times    = zeros(m_test,1);
+
+        for j = 1:m_test
+            tic;
+            test_data_point         = extract_features( delta_x_test(j), delta_y_test(j), delta_theta_test(j) );
+            test_reachability(j)	= is_reachable( svm_output, test_data_point );
+            prediction_times(j)     = toc;
+        end
+        avg_prediction_time = mean(prediction_times);
+        [n_test_errors, test_error_percent] = count_errors( test_reachability, (cost_test < cost_threshold) );
+    end
+
+    
+    %% Plot the Results
+    
+    % Plot the set of reachable states
+    figure;
+    if test_file_exists
+        subplot(1,2,1); 
+    end
+    hold on;
+    scatter3( delta_x( training_reachability == TRUE ), delta_y( training_reachability == TRUE ), delta_theta( training_reachability == TRUE ), 'ob' );
+    scatter3( delta_x( training_reachability == FALSE ), delta_y( training_reachability == FALSE ), delta_theta( training_reachability == FALSE ), 'xr' );
+    view([43, 22]);
+    box off; grid on;
+    legend('Reachable', 'Unreachable', 'Location', 'SouthOutside');
+    xlabel('\deltax [m]');
+    ylabel('\deltay [m]');
+    zlabel('\delta\theta [rad]');
+    title(['Set of ', num2str(cost_threshold), '-Cost Reachable States']);
+    
+    if test_file_exists
+        subplot(1,2,2); hold on;
+        scatter3( delta_x_test( test_reachability == true ), delta_y_test( test_reachability == true ), delta_theta_test( test_reachability == true ), 'ob' );
+        scatter3( delta_x_test( test_reachability == false ), delta_y_test( test_reachability == false ), delta_theta_test( test_reachability == false ), 'xr' );
+        view([43, 22]);
+        box off; grid on;
+        legend('Reachable', 'Unreachable', 'Location', 'SouthOutside');
+        xlabel('\deltax [m]');
+        ylabel('\deltay [m]');
+        zlabel('\delta\theta [rad]');
+        title(['Estimate of the ', num2str(cost_threshold), '-Cost Reachable States']);
+
+        figure;
+        hold on;
+        plot( run_number_test( test_reachability == true ), cost_test( test_reachability == true ), 'ob' );
+        plot( run_number_test( test_reachability == false ), cost_test( test_reachability == false ), 'xr' );
+        V = axis;
+        plot( [V(1), V(2)], cost_threshold.*ones(2,1), '-k', 'Linewidth', 2 );
+        xlabel('Run');
+        ylabel('Cost');
+        title(['Training Data Costs with Reachability Cost Threshold ', num2str(cost_threshold), ' (\sigma = ', num2str(sigma), ')']);
+        grid on;
+    end
+
+
+    %% Report the Results
+    fprintf( 1, '\nCost Threshold: \t\t\t%f (sigma = %f)\n', cost_threshold, sigma );
+    fprintf( 1, 'Validation Method: \t\t\t%s\n', validation_mode );
+    fprintf( 1, '%s: \t%d\n', error_string, n_errors );
+    fprintf( 1, '%s: \t%f%%\n', error_percent_string, error_percent );
+    if test_file_exists
+        fprintf( 1, 'Number of Test Set Errors: \t%d\n', n_test_errors );
+        fprintf( 1, 'Percentage Test Set Errors: %f%%\n', test_error_percent );
+        fprintf( 1, 'Average Prediction Time: \t%f\n', avg_prediction_time );
+    end
+    fprintf( 1, '\n');
+
+end
+
+%% Adjust and Save Plots
+if test_file_exists
+    figure_names = {'Dubins_reachability_set_example', 'Dubins_training_data_feasibility', 'Dubins_test_data_feasibility', ...
+        'Dubins_reachability_-1sigma', 'Dubins_cost_reachability_-1sigma', ...
+        'Dubins_reachability_0sigma', 'Dubins_cost_reachability_0sigma', ...
+        'Dubins_reachability_1sigma', 'Dubins_cost_reachability_1sigma'};
+else
+    figure_names = {'Dubins_reachability_set_example', 'Dubins_training_data_feasibility', ...
+        'Dubins_reachability_-1sigma', ...
+        'Dubins_reachability_0sigma', ...
+        'Dubins_reachability_1sigma'};
+end
+
+set_plot_properties( 'mode', plot_mode );
+savefigs('Format', 'fig', 'Save', 'all', 'SaveDir', 'Results', 'ZipName', 'Dubins_figs', 'SaveAs', figure_names );
+savefigs('Format', 'png', 'Save', 'all', 'SaveDir', 'Results', 'ZipName', 'Dubins_pngs', 'SaveAs', figure_names );
+
+
+end
+
+
+function [ delta_x, delta_y, delta_theta, cost, run_number ] = read_data( filename )
+    % Read in training data
+    fid         = fopen( filename );
+    data        = textscan( fid, '%d%f%f%f%f%d', 'Headerlines', 0, 'Delimiter', ';' );
+    run_number  = data{1};
+    delta_x     = data{2};
+    delta_y     = data{3};
+    delta_theta	= data{4}.*(pi/180);
+    cost        = data{5}.*(4/pi);
+    exit_flag   = data{6};
+    
+    %data{1} = double(data{1}); data{6} = double(data{6});
+    %data{5} = data{5}.*(4/pi);
+    %dlmwrite('DubinsTrainingData-CS229Final-Dec11-1.txt',cell2mat(data),'delimiter',';','precision',5);
+
+    % Visualize infeasible data
+    figure; hold on;
+    scatter3( delta_x( exit_flag == 1 ), delta_y( exit_flag == 1 ), delta_theta( exit_flag == 1 ), '.b' );
+    scatter3( delta_x( exit_flag ~= 1 ), delta_y( exit_flag ~= 1 ), delta_theta( exit_flag ~= 1 ), 'sk', 'MarkerFaceColor', 'r' );
+    view([43, 22]);
+    box off; grid on;
+    legend('Feasible', 'Infeasible', 'Location', 'EastOutside');
+    xlabel('\deltax [m]');
+    ylabel('\deltay [m]');
+    zlabel('\delta\theta [rad]');
+    title('Distribution of Input Data');
+
+    % Use only feasible training data: reject any 2PBVP solutions that did not converge
+    delta_x     = delta_x( exit_flag == 1 );
+    delta_y     = delta_y( exit_flag == 1 );
+    delta_theta	= delta_theta( exit_flag == 1 );
+    cost        = cost( exit_flag == 1 );
+    run_number  = 1:length(delta_x);
+end
+
+function feature_matrix = extract_features( delta_x, delta_y, delta_theta )
+    w_x         = 1;
+    w_y         = 1;
+    w_theta     = 1;
+
+    feature_matrix = [ ...
+        delta_x, ...
+        delta_y, ...
+        delta_theta, ...
+        abs(delta_x), ...
+        abs(delta_y), ...
+        abs(delta_theta), ...
+        delta_x.^2, ...
+        delta_y.^2, ...
+        delta_theta.^2, ...
+        delta_x.*delta_y ...
+        delta_x.*delta_theta, ...
+        delta_y.*delta_theta, ...
+        sin(delta_theta), ...
+        cos(delta_theta), ...
+        tan(delta_theta), ...
+        sin(delta_theta).^2, ...
+        cos(delta_theta).^2, ...
+        tan(delta_theta).^2, ...
+        delta_x.*sin(delta_theta), ...
+        delta_y.*sin(delta_theta), ...
+        delta_x.*cos(delta_theta), ...
+        delta_y.*cos(delta_theta), ...
+        delta_x.*tan(delta_theta), ...
+        delta_y.*tan(delta_theta), ...
+        sqrt(delta_x.^2 + delta_y.^2), ...
+        delta_theta.*sqrt(delta_x.^2 + delta_y.^2), ...
+        sqrt((w_x.*delta_x).^2 + (w_y.*delta_y).^2 + (w_theta.*delta_theta).^2), ...
+    ];
+end
+
+function dubins_reachable_set(T, rho_min, v)
+    
+    Npoints = 100;
+    omega   = v/rho_min;
+    T       = sort( max( min(T, (pi/2)/omega), 0) );
+    
+    figure; hold on;
+    xlabel('x');
+    ylabel('y', 'Rotation', 0);
+    if numel(T) == 1
+        title(['Reachable Set for the Dubin''s Car (\rho_{min} = ', num2str(rho_min), ', v = ', num2str(v), ') for Horizon Time T = ', num2str(T)]);
+    else
+        title(['Reachable Sets for the Dubin''s Car (\rho_{min} = ', num2str(rho_min), ', v = ', num2str(v), ') for Horizon Times T \leq ', num2str(T(end))]);
+    end
+    grid on;
+    
+    for Thorizon = T(1:1:end-1)
+        tau         = linspace( 0, Thorizon, Npoints );
+        x_right     = rho_min.*(1 - cos(omega*tau));
+        y_right     = rho_min.*sin(omega*tau);
+        
+        u_1         = y_right./rho_min;
+        u_2         = (rho_min - x_right)./rho_min;
+        x_topright  = x_right + u_1.*( Thorizon - tau );
+        y_topright  = y_right + u_2.*( Thorizon - tau );
+        
+        plot( x_topright, y_topright, 'REPLACE_WITH_DASH_DASHk', -x_topright, y_topright, 'REPLACE_WITH_DASH_DASHk' );
+        text( x_topright(end), y_topright(end), ['T = ', num2str(Thorizon,'%3.1f')], 'VerticalAlignment', 'Top' );
+    end
+    
+    Thorizon    = T(end);
+    tau         = linspace( 0, Thorizon, Npoints );
+    x_right     = rho_min.*(1 - cos(omega*tau));
+    y_right     = rho_min.*sin(omega*tau);
+    
+    u_1         = y_right./rho_min;
+    u_2         = (rho_min - x_right)./rho_min;
+    x_topright  = x_right + u_1.*( Thorizon - tau );
+    y_topright  = y_right + u_2.*( Thorizon - tau );
+    
+    plot( x_right, y_right, '-b', -x_right, y_right, '-b' );
+    plot( x_topright, y_topright, '-b', -x_topright, y_topright, '-b' );
+end
+
+
+##### SOURCE END #####
+--></body></html>
