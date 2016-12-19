@@ -49,11 +49,15 @@ if size(mpinfo.obstacles.obstacleSpace,1) > size(mpinfo.sampling.stateSampleRang
 end
 
 % Check environment format
+if ~(mpinfo.environment.nWorkDims == 2 || mpinfo.environment.nWorkDims == 3)
+    err.flag = 1;
+    err.string = 'Invalid workspace dimensions';
+end
 if isfield(mpinfo.environment, 'bounds') && ...
         ~isempty(mpinfo.environment.bounds)
 
-    [nConfDim, nCols] = size(mpinfo.environment.bounds);
-    if nCols ~= 2 || ~(nConfDim == 2 || nConfDim == 3) 
+    [nRows, nCols] = size(mpinfo.environment.bounds);
+    if nCols ~= 2 || nRows ~= mpinfo.environment.nWorkDims
         err.flag = 1;
         err.string = 'Environment bounds mis formated';
     end
@@ -63,16 +67,37 @@ if isfield(mpinfo.environment, 'bounds') && ...
         err.flag = 1;
         err.string = 'evironment bounds min greater than max';
     end
-
 end
 
 % Check time scaling
-if isfield(mpinfo, 'smoother') && isfield(mpinfo.smoother, 'timeScaling') && ...
-    mpinfo.smoother.timeScaling < 1
+if isfield(mpinfo, 'smoother') 
+    if isfield(mpinfo.smoother, 'timeScaling') && mpinfo.smoother.timeScaling < 1
+        err.flag = 1;
+        err.string = 'timeScaling must not accelerate time segments';
+    end
+    
+    if isfield(mpinfo.smoother, 'collisionSpeedCheck') && mpinfo.smoother.collisionSpeedCheck < 1
+        err.flag = 1;
+        err.string = 'collisionSpeedCheck must not accelerate time segments';
+    end
 
-    err.flag = 1;
-    err.string = 'timeScaling must not accelerate time segments';
+end
 
+% Check communications logic
+if (~mpinfo.comms.connectVicon)
+    if (mpinfo.onlineOptions.runMPC)
+        err.flag = 1;
+        err.string = 'Model Predictive Contol (MPC) requires vicon connection';
+    end
+    if (mpinfo.comms.recvXprior || mpinfo.comms.xmitPassiveObs || ...
+            mpinfo.comms.recvActiveObs)
+        err.flag = 1;
+        err.string = 'Obstacle and terminal state communication requires vicon connection';
+    end
+    if (isnan(mpinfo.termStates.Xstart))
+        err.flag = 1;
+        err.string = 'Start state must be provided if no vicon connection';
+    end
 end
 
 end

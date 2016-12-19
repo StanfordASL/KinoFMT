@@ -18,7 +18,7 @@
 %           input and output format
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function smoother = DblIntQuadSplineSmoother(keys, Tdel, yaw)
+function smoother = DblIntQuadSplineSmoother(keys, Tdel, keyVelI, keyVelF, yaw)
 
 % Hardcoded Parameters
 N = 9;		% Order of polynomial
@@ -58,7 +58,7 @@ end
 
 
 % Form constraint  vector d
-% NOTE: Assumes that vel, acc, jerk, snap are fixed to zero at beginning and end    
+% NOTE: Assumes that acc, jerk, snap are fixed to zero at beginning and end    
 d_exFixed = zeros(nVar, 1);
 d_exFixed(1:nTermVar) = 1;
 d_exFixed(end-nTermVar+1:end) = 1;
@@ -82,6 +82,9 @@ accordion = [accordion, zeros(nRepKeys, nRepKeys*(nTermVar-1))];
 accordion = reshape(accordion', nRepKeys, nVar)';   % matrix for exanding columns
 d = accordion*repKeys;     % hold x, y, z, yaw constraint values in one matrix
 
+% insert initial and final velocity
+d(2,:) = [keyVelI, 0];
+d(nVar-nTermVar+2,:) = [keyVelF, 0];
 
 % Form Q and A  matrices for derivative minimization (sec 3.1 - 3.3)
 % Calculate gradient terms for time allocation (sec 3.4 and 3.6)

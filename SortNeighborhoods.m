@@ -30,8 +30,10 @@ nTotSamples = mpinfo.nTotSamples;
 % Sort
 outNeighborCell = cell(nTotSamples,1); % outgoing neighbors in ascending cost
 outNeighborSortedIDs = cell(nTotSamples,1);	% outgoing neighbors sorted by ID
+outNeighborTrimmedSortedIDs = cell(nTotSamples,1); % outgoing neighbors trimmed to cost threshold sorted by ID
 inNeighborCell = cell(nTotSamples,1); % incoming neighbors in ascending cost
 inNeighborSortedIDs = cell(nTotSamples,1); % incoming neighbors sorted by ID
+inNeighborTrimmedSortedIDs = cell(nTotSamples,1); % incoming neighbors trimmed to cost threshold sorted by ID
 
 for i = sortingRange
     outNeighborIDs = find(mpinfo.evalMat(i,:) > 0)';
@@ -41,6 +43,16 @@ for i = sortingRange
     outNeighbors = outNeighbors(sortIX,:);
     outNeighborCell{i,1} = outNeighbors;
     outNeighborSortedIDs{i,1} = uint32(outNeighborIDs);
+    if isempty(outNieghbors)
+        outNeighborTrimmedSortedIDs{i,1} = [];
+    else
+        threshInd = find(outNeighbors(:,2) > mpinfo.learning.neighborCostThreshold, 1);
+        if isempty(threshInd)
+            outNeighborTrimmedSortedIDs{i,1} = outNeighborSortedIDs{i,1};
+        else
+            outNeighborTrimmedSortedIDs{i,1} = uint32(sort(outNeighbors(1:threshInd-1, 1)));
+        end
+    end
     
     inNeighborIDs = find(mpinfo.evalMat(:,i) > 0);
     inNeighborCosts = mpinfo.costMat(mpinfo.evalMat(inNeighborIDs,i));
@@ -49,6 +61,16 @@ for i = sortingRange
     inNeighbors = inNeighbors(sortIX,:);
     inNeighborCell{i,1} = inNeighbors;
     inNeighborSortedIDs{i,1} = uint32(inNeighborIDs);
+    if isempty(inNeighborCell{i,1})
+        inNeighborTrimmedSortedIDs{i,1} = [];
+    else
+        threshInd = find(inNeighbors(:,2) > mpinfo.learning.neighborCostThreshold, 1);
+        if isempty(threshInd)
+            inNeighborTrimmedSortedIDs{i,1} = inNeighborSortedIDs{i,1};
+        else
+            inNeighborTrimmedSortedIDs{i,1} = uint32(sort(inNeighbors(1:threshInd-1, 1)));
+        end
+    end
 end
 
 % Consolidate Results
@@ -56,6 +78,9 @@ mpinfo.outNeighborCell = outNeighborCell;
 mpinfo.inNeighborCell = inNeighborCell;
 mpinfo.outNeighborSortedIDs = outNeighborSortedIDs;
 mpinfo.inNeighborSortedIDs = inNeighborSortedIDs;
+mpinfo.outNeighborTrimmedSortedIDs = outNeighborTrimmedSortedIDs;
+mpinfo.inNeighborTrimmedSortedIDs = inNeighborTrimmedSortedIDs;
+
 
 end
 

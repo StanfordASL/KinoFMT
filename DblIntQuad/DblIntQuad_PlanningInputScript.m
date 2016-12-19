@@ -115,7 +115,7 @@ learning.cost.featureSet = @DblIntQuadFeatureSetCost;
 % Obstacles
 obstacles.obstacleSpace = sampling.stateSampleRange(1:3,:); % dimensions and range of dimensions where obstacles may exist
 obstacles.generationFunction = @IndoorObstacleSet4; % function to call for pre-generated, hand-coded obstacles
-obstacles.nObstacles = NaN;                                 % number of obstacles (only if generation function requires)
+obstacles.nPassiveObs = NaN;                                 % number of obstacles (only if generation function requires)
 obstacles.minCuboidDimension = 1.0;                         % minimum dimension of a cuboid(only if generation function requires)
 obstacles.maxCuboidDimension = 2.0;                         % number of obstacles (only if generation function requires)
 
@@ -143,7 +143,7 @@ smoother.flatPath = false;  % compress 3D trajectory to 2D
 % Communication options
 % comms.commpath = '/../../AgileQuad/ViconWifiComm/
 comms.commfile = '../../AgileQuad/ViconWifiComm/Debug/test.txt';
-comms.xmit = false;
+comms.xmitTrajectory = false;
 % CommsWriter set in systemDefs
 
 % Consolidate Information

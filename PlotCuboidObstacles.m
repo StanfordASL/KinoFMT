@@ -19,7 +19,11 @@ err = 1;
 facealpha = 1.0;
 
 % Check if axis aligned obstacle matrix exists
-if length(varargin)== 1
+if length(varargin)== 1 || length(varargin) == 2
+    
+    if length(varargin) == 2
+        facealpha = varargin{2};
+    end
     
     ulVerts = varargin{1};
     err = 2;

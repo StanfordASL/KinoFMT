@@ -19,6 +19,7 @@ function [mpinfo] = DblIntQuadConstrainedSmoother(mpinfo)
     % extract data
     ulVerts = mpinfo.obstacles.cuboids.ulVerts;
     bounds = mpinfo.environment.bounds;
+    spheres = mpinfo.obstacles.spheres;
     yaw = mpinfo.smoother.yaw;
     timeScaling = mpinfo.smoother.timeScaling;
     options = mpinfo.smoother;
@@ -43,29 +44,37 @@ function [mpinfo] = DblIntQuadConstrainedSmoother(mpinfo)
         Tdel(i,1) = Tdel(i,1)*timeScaling;
     end
     keys(end, :) = mpinfo.stateMat(keyIDNums(end), 1:3);
+    % record initial and final velocity for enforcment in spline
+    keyVelInit = mpinfo.stateMat(keyIDNums(1),4:6);
+    keyVelFinal = mpinfo.stateMat(keyIDNums(end),4:6);
     if mpinfo.smoother.flatPath
         % flatten path to 2D as a hack because throttle model is no
         % good right now
         keys(end,3) = keys(1,3);
+        keyVelInit(1,3) = 0;
+        keyVelFinal(1,3) = 0;
     end
     clear i
 
     % generate trajectory and check trajectory collisions
-    [smoother, valid] = Gen_n_Check(keys, keyCaseNums, keyTrajNums,...
-                mpinfo.trajMat, nTrajNodes, nCheckNodes, Tdel, yaw, ulVerts, bounds, mpinfo.smoother.flatPath);
+    [smoother, valid] = Gen_n_Check(keys, keyCaseNums, keyTrajNums, keyVelInit, keyVelFinal,...
+                mpinfo.trajMat, nTrajNodes, nCheckNodes, Tdel, yaw, mpinfo.environment.nWorkDims, bounds,...
+                ulVerts, spheres, mpinfo.smoother.flatPath, mpinfo.smoother.collisionSpeedCheck);
     
-    mpinfo.smoother = smoother;
+    if (valid)
+        mpinfo.smoother = smoother;
+    end
     mpinfo.smoother.options = options;
     mpinfo.smoother.valid = valid;
         
 end
 
-function [smoother, valid]  = Gen_n_Check(keys, keyCaseNums, keyTrajNums,...
-                trajMat, nTrajNodes, nCheckNodes, Tdel, yaw, ulVerts, bounds, flatPath)
+function [smoother, valid]  = Gen_n_Check(keys, keyCaseNums, keyTrajNums, keyVelInit, keyVelFinal,...
+                trajMat, nTrajNodes, nCheckNodes, Tdel, yaw, nWorkDims, bounds, ulVerts, spheres, flatPath, colSpeedCheck)
         
 %     collisionSeg = NaN;
     % generate polynomial trajectory
-    smoother = DblIntQuadSplineSmoother(keys, Tdel, yaw);
+    smoother = DblIntQuadSplineSmoother(keys, Tdel, keyVelInit, keyVelFinal, yaw);
     valid = true;
 
     nSeg = smoother.nSeg;
@@ -83,8 +92,10 @@ function [smoother, valid]  = Gen_n_Check(keys, keyCaseNums, keyTrajNums,...
         for j = 1:nCheckNodes-1
             nodeA = [xpos(j) ypos(j) zpos(j)];
             nodeB = [xpos(j+1) ypos(j+1) zpos(j+1)];
-            collisionFree = checkCollision(nodeA, nodeB,...
-                ulVerts, bounds);
+%             collisionFree = checkCollision(nodeA, nodeB,...
+%                 ulVerts, bounds);
+            collisionFree = CollisionCheckerMEX(nodeA, nodeB, nWorkDims,...
+                bounds, ulVerts', spheres');
             inCollision = ~collisionFree;
             if inCollision
                 break;
@@ -99,7 +110,7 @@ function [smoother, valid]  = Gen_n_Check(keys, keyCaseNums, keyTrajNums,...
                 bisectNode = floor((keyTrajNums(curSeg+1)+keyTrajNums(curSeg))/2);
             end
             if bisectNode == keyTrajNums(curSeg)
-                disp('Smoother failed due to obstacle proximity');
+%                 disp('Smoother failed due to obstacle proximity');
                 smoother = NaN;
                 valid = false;
                 return;
@@ -122,11 +133,11 @@ function [smoother, valid]  = Gen_n_Check(keys, keyCaseNums, keyTrajNums,...
                 % good right now
                 keys(curSeg+1,3) = keys(1,3);
         	end
-            Tdel = [Tdel(1:curSeg-1); Tdel(curSeg)/2; Tdel(curSeg)/2; Tdel(curSeg+1:end)];
+            Tdel = [Tdel(1:curSeg-1); colSpeedCheck*Tdel(curSeg)/2; colSpeedCheck*Tdel(curSeg)/2; Tdel(curSeg+1:end)];
             
             % recursive call to Gen_n_Check
-            [smoother, valid] = Gen_n_Check(keys, keyCaseNums, keyTrajNums,...
-                trajMat, nTrajNodes, nCheckNodes, Tdel, yaw, ulVerts, bounds, flatPath);
+            [smoother, valid] = Gen_n_Check(keys, keyCaseNums, keyTrajNums, keyVelInit, keyVelFinal,...
+                trajMat, nTrajNodes, nCheckNodes, Tdel, yaw, nWorkDims, bounds, ulVerts, spheres, flatPath, colSpeedCheck);
 
             % to break or not to break?
             break;

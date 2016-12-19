@@ -1,5 +1,5 @@
 
-function DblIntQuadPlotMotionPlan(mpinfo, viconLogFile, px4Log)
+function DblIntQuadPlotMotionPlan(mpinfo, viconLogFile, obstacleLogFile, px4Log)
 
 % Set up variables
 optPath = mpinfo.optPath;
@@ -13,6 +13,9 @@ obstacles = mpinfo.obstacles;
 nTrajNodes = mpinfo.sampling.nTrajNodes;
 viconValid = false;
 fa = 1.0;
+viconStartTimestep = 1;
+viconStopTimestep = NaN;
+obstacleValid = false;
 
 if nargin >= 2
     try
@@ -23,8 +26,17 @@ if nargin >= 2
     end
 end
 
-px4Valid = false;
 if nargin >= 3
+    try
+        %obstacleData = importdata(obstacleLogFile);
+        obstacleValid = true;
+    catch
+        disp('Invalid obstacle log file');
+    end
+end
+
+px4Valid = false;
+if nargin >= 4
     %%%%%%%%%%%%%%%%%%
     % import px4 data
     %%%%%%%%%%%%%%%%%%
@@ -93,6 +105,9 @@ catch
         end
     end
 end
+if isfield(obstacles, 'spheres')
+    PlotSphereObstacles(obstacles.spheres);
+end
 
 % Try plotting smoothed trajectory
 try
@@ -122,21 +137,19 @@ end
 % try plotting vicon data
 if (viconValid)
     try
-        plot3(viconData.data(500:1500,3),viconData.data(500:1500,4),viconData.data(500:1500,5), 'g', 'Linewidth', 2)
+        if isnan(viconStopTimestep)
+            plot3(viconData.data(viconStartTimestep:end, 3), ...
+                    viconData.data(viconStartTimestep:end,4), ...
+                    viconData.data(viconStartTimestep:end,5), 'g', 'Linewidth', 2)
+        else
+            plot3(viconData.data(viconStartTimestep:viconStopTimestep, 3), ...
+                viconData.data(viconStartTimestep:viconStopTimestep,4), ...
+                viconData.data(viconStartTimestep:viconStopTimestep,5), 'g', 'Linewidth', 2)
+        end
     catch
         disp('failed to plot vicon data');
     end
 end
-xlabel('x [m]')
-ylabel('y [m]')
-zlabel('z [m]')
-xlim(xyz_bounds(1,:))
-ylim(xyz_bounds(2,:))
-zlim(xyz_bounds(3,:))
-view(260,-50)
-% view(151,-10);
-camroll(180);
-hold off
 
 % try plotting px4 data
 
@@ -147,6 +160,43 @@ hold off
 % zlabel('z(t)');
 % legend('x_{init}', 'x_{goal}', 'Motion Plan', 'Location', 'EastOutside');
 % grid on; axis equal; %view([-20 20]);
+
+% try plotting obstacles
+if (obstacleValid) 
+    try
+        fid = fopen(obstacleLogFile);
+        obsLine = fgetl(fid);
+        obsLine = fgetl(fid);
+        while ischar(obsLine)
+           obs = str2num(obsLine);
+           obs(1:2) = [];
+           while length(obs) >= 3
+              plot3(obs(1), obs(2), obs(3), 'b*');
+              obs(1:3) = [];
+           end
+           obsLine = fgetl(fid);
+        end
+        fclose(fid);
+    catch
+        fclose(fid);
+        disp('failed to plot obstacle log');
+    end
+end
+
+xlabel('x [m]')
+ylabel('y [m]')
+zlabel('z [m]')
+xlim(xyz_bounds(1,:))
+ylim(xyz_bounds(2,:))
+zlim(xyz_bounds(3,:))
+view(260,-50)
+% view(151,-10);
+camroll(180);
+
+hold off
+
+
+
 figure; hold on;
 plot3( x_0(1), x_0(2), x_0(3), '-og', 'Color', [0 0.5 0], 'Linewidth', 2, 'MarkerSize', 7 );
 plot3( x_f(1), x_f(2), x_f(3), '-or', 'Linewidth', 2, 'MarkerSize', 7 );
@@ -193,6 +243,8 @@ zlim(xyz_bounds(3,:))
 view(151,-10);
 camroll(180);
 hold off
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Trajectory (Multi View)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -221,6 +273,9 @@ catch
             end
         end
     end
+end
+if isfield(obstacles, 'spheres')
+    PlotSphereObstacles(obstacles.spheres);
 end
 plot3(stateMat(1,1),stateMat(1,2),stateMat(1,3),'g^',...
     'MarkerFaceColor','g', 'MarkerSize', 10)
@@ -291,6 +346,9 @@ catch
         end
     end
 end
+if isfield(obstacles, 'spheres')
+    PlotSphereObstacles(obstacles.spheres);
+end
 plot3(stateMat(1,1),stateMat(1,2),stateMat(1,3),'g^',...
     'MarkerFaceColor','g', 'MarkerSize', 10)
 for i = 1:size(optPath,1)-1
@@ -359,6 +417,9 @@ catch
             end
         end
     end
+end
+if isfield(obstacles, 'spheres')
+    PlotSphereObstacles(obstacles.spheres);
 end
 plot3(stateMat(1,1),stateMat(1,2),stateMat(1,3),'g^',...
     'MarkerFaceColor','g', 'MarkerSize', 10)
@@ -431,6 +492,9 @@ catch
             end
         end
     end
+end
+if isfield(obstacles, 'spheres')
+    PlotSphereObstacles(obstacles.spheres);
 end
 plot3(stateMat(1,1),stateMat(1,2),stateMat(1,3),'g^',...
     'MarkerFaceColor','g', 'MarkerSize', 10)
@@ -516,6 +580,9 @@ catch
             end
         end
     end
+end
+if isfield(obstacles, 'spheres')
+    PlotSphereObstacles(obstacles.spheres);
 end
 plot3(stateMat(3:end,1),stateMat(3:end,2),stateMat(3:end,3),'.')
 xlim(xyz_bounds(1,:))

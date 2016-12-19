@@ -29,12 +29,12 @@ if ~exist('mpinfo','var')
     return;
 end
 
-profiler = true;   % (boo) set if code profiler should be run
+profiler = false;   % (boo) set if code profiler should be run
 
 % Start state and Goal region
 % termStates.Xstart = Xstart;      % (m,m,m,m/s,m/s.m/s) initial state
-% termStates.Xstart = NaN;
-termStates.Xstart = [1.27, 3.68, -1.19, 0, 0, 0];
+%termStates.Xstart = NaN;
+termStates.Xstart = [1.28, 3.83, -1.17, 0, 0, 0];
 termStates.goalRegion = ...
     [1.25  1.25;...           % (m) x-range in goal region
      0.5  0.5;...          % (m) y-range in goal region 
@@ -73,7 +73,7 @@ bounds =[   -0.5    2.8;...
 % obstacles.obstacleSpace = mpinfo.sampling.stateSampleRange(1:3,:); % dimensions and range of dimensions where obstacles may exist
 obstacles.obstacleSpace = bounds; % dimensions and range of dimensions where obstacles may exist
 obstacles.generationFunction = @IndoorObstacleSet4; % function to call for pre-generated, hand-coded obstacles
-obstacles.nObstacles = NaN;                                 % number of obstacles (only if generation function requires)
+obstacles.nPassiveObs = NaN;                                 % number of obstacles (only if generation function requires)
 obstacles.minCuboidDimension = 1.0;                         % minimum dimension of a cuboid(only if generation function requires)
 obstacles.maxCuboidDimension = 2.0;                         % number of obstacles (only if generation function requires)
 
@@ -108,8 +108,8 @@ solnCondensed{i,1} = mpinfo_complete.optCost; i = i+1;
 solnCondensed{i,1} = length(mpinfo_complete.optPath); i = i+1;
 solnCondensed{i,1} = mpinfo_complete.smoother.nSeg; i = i+1;
 solnCondensed{i,1} = mpinfo_complete.onlineCompTime; i = i+1;
-solnCondensed{i,1} = mpinfo_complete.comms.recv; i = i+1;
-solnCondensed{i,1} = mpinfo_complete.comms.xmit; i = i+1;
+solnCondensed{i,1} = mpinfo_complete.comms.connectVicon; i = i+1;
+solnCondensed{i,1} = mpinfo_complete.comms.xmitTrajectory; i = i+1;
 solnCondensed{i,1} = mpinfo_complete.profiler; i = i+1;
 solnCondensed{i,1} = mpinfo_complete.learning.nMLTrainingSamples; i = i+1;
 solnCondensed{i,1} = mpinfo_complete.learning.neighbor.training.nErrors; i = i+1;

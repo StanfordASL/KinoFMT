@@ -58,6 +58,9 @@ if length(finalIDs) ~= nCurProbs
 end
 
 neighbor_counter = 0;
+curTrajMat = zeros(nCurProbs, nStateDims, mpinfo.sampling.nTrajNodes);
+curCtrlMat = zeros(nCurProbs, nControlDims, mpinfo.sampling.nTrajNodes);
+nCur2PBVPs = 0;
 for j = 1:nCurProbs
     
     % skip if solving trivial pair (initial state = final state
@@ -89,26 +92,49 @@ for j = 1:nCurProbs
     if bvpinfo.solution.exitflag > 0
         neighbor_counter = neighbor_counter + 1;
         n2PBVPs = n2PBVPs+1;
+        nCur2PBVPs = nCur2PBVPs+1;
         curCost = bvpinfo.solution.cost;
         % evaluation number
         mpinfo.evalMat(initIDs(j),finalIDs(j)) = n2PBVPs;
         % cost
         mpinfo.costMat(n2PBVPs,1) = curCost;
+
+        % extract state and control trajectory
         % state trajectory
         for k = 1:nStateDims
-            mpinfo.trajMat(n2PBVPs,k,:) = ...
+            curTrajMat(nCur2PBVPs,k,:) = ...
                 bvpinfo.solution.(stateLabels{k});
         end
         % control trajectory
         for k = 1:nControlDims
-            mpinfo.controlMat(n2PBVPs,k,:) =...
+            curCtrlMat(nCur2PBVPs,k,:) = ...
                 bvpinfo.solution.(controlLabels{k});
         end
+%         if isfield(mpinfo.systemDefs, 'CustomBVPOptimizer')
+%             mpinfo.trajMat(n2PBVPs,:,:) = reshape(bvpinfo.solution.optTraj,...
+%                 1,nStateDims,mpinfo.sampling.nTrajNodes);
+%             mpinfo.controlMat(n2PBVPs,:,:) = reshape(bvpinfo.solution.optCtrl,...
+%                 1,nControlDims,mpinfo.sampling.nTrajNodes);
+%         else
+%             % state trajectory
+%             for k = 1:nStateDims
+%                 mpinfo.trajMat(n2PBVPs,k,:) = ...
+%                     bvpinfo.solution.(stateLabels{k});
+%             end
+%             % control trajectory
+%             for k = 1:nControlDims
+%                 mpinfo.controlMat(n2PBVPs,k,:) =...
+%                     bvpinfo.solution.(controlLabels{k});
+%             end
+%         end
         
         % Insert into sorted outgoing neighborhood for initID
         if isempty(mpinfo.outNeighborCell{initIDs(j)})
             mpinfo.outNeighborCell{initIDs(j)} = [finalIDs(j) curCost];
             mpinfo.outNeighborSortedIDs{initIDs(j)} = uint32(finalIDs(j));
+            if curCost < mpinfo.learning.neighborCostThreshold
+                mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)} = uint32(finalIDs(j));
+            end
         else
 			% Sorted by Cost
             insertIX = find(mpinfo.outNeighborCell{initIDs(j)}(:,2) > curCost, 1);
@@ -145,13 +171,37 @@ for j = 1:nCurProbs
                     mpinfo.outNeighborSortedIDs{initIDs(j)}(insertIX:end)]);
             end
             clear insertIX;
+            
+            % Sorted by ID and trimmed to the cost threshold
+            if curCost < mpinfo.learning.neighborCostThreshold
+                insertIX = find(mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)} > finalIDs(j), 1);
+                if insertIX == 1
+                    mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)} =...
+                        uint32([finalIDs(j);...
+                        mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)}]);
+                elseif isempty(insertIX)
+                    mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)} =...
+                        uint32([mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)};...
+                        finalIDs(j)]);
+                else
+                    mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)} =...
+                        uint32([mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)}(1:insertIX-1);...
+                        finalIDs(j);...
+                        mpinfo.outNeighborTrimmedSortedIDs{initIDs(j)}(insertIX:end)]);
+                end
+                clear insertIX;
+            end
         end
         
         % Insert into sorted incoming neighborhood for finalID
         if isempty(mpinfo.inNeighborCell{finalIDs(j)})
             mpinfo.inNeighborCell{finalIDs(j)} = [initIDs(j) curCost];
             mpinfo.inNeighborSortedIDs{finalIDs(j)} = uint32(initIDs(j));
+            if curCost < mpinfo.learning.neighborCostThreshold
+                mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)} = uint32(initIDs(j));
+            end
         else
+            % Sorted by Cost
             insertIX = find(mpinfo.inNeighborCell{finalIDs(j)}(:,2) > curCost, 1);
             if insertIX == 1
                 mpinfo.inNeighborCell{finalIDs(j)} =...
@@ -169,6 +219,7 @@ for j = 1:nCurProbs
             end
             clear insertIX;
             
+            % Sorted by ID
             insertIX = find(mpinfo.inNeighborSortedIDs{finalIDs(j)} > initIDs(j), 1);
             if insertIX == 1
                 mpinfo.inNeighborSortedIDs{finalIDs(j)} =...
@@ -186,6 +237,25 @@ for j = 1:nCurProbs
             end
             clear insertIX;
             
+            % Sorted by ID and trimmed to the cost threshold
+            if curCost < mpinfo.learning.neighborCostThreshold
+                insertIX = find(mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)} > initIDs(j), 1);
+                if insertIX == 1
+                    mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)} =...
+                        uint32([initIDs(j);...
+                        mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)}]);
+                elseif isempty(insertIX)
+                    mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)} =...
+                        uint32([mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)};...
+                        initIDs(j)]);
+                else
+                    mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)} =...
+                        uint32([mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)}(1:insertIX-1);...
+                        initIDs(j);...
+                        mpinfo.inNeighborTrimmedSortedIDs{finalIDs(j)}(insertIX:end)]);
+                end
+                clear insertIX;
+            end
         end
     end
     
@@ -194,6 +264,15 @@ for j = 1:nCurProbs
         break;
     end
 end
+
+% remove exess storage for curTraj and curCtrl matrices
+curTrajMat(nCur2PBVPs+1:end,:,:) = [];
+curCtrlMat(nCur2PBVPs+1:end,:,:) = [];
+
+% concatentate curTrajMat onto mpinfo.trajMat only once to avoid repeated
+% memory allocations
+mpinfo.trajMat = cat(1,mpinfo.trajMat,curTrajMat);
+mpinfo.controlMat = cat(1,mpinfo.controlMat,curCtrlMat);
 
 % Consolidate Results
 mpinfo.sampling.n2PBVPs = n2PBVPs;

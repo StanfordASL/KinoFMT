@@ -8,8 +8,9 @@
  *      evalMat:	(uint64) [nSample, nSample] matrix holding case numbers for 2PBVP solutions
  *		costMat:	(double) [nBVPs, 1] vector holding cost of each 2PBVP
  *		trajMat:	(double) [nBVPs, nStateDims, nTrajNodes] 3D matrix holding state trajectory for each 2PBVP
- *		obsMat:		(double) [nConfDims,2*nObs] matrix storing upper and lower vertices of m obstacles
- *		bounds:		(double) [nConfDims,2] matrix containing the environmental bounds
+ *		obsMat:		(double) [nWorkDims,2*nObs] matrix storing upper and lower vertices of m obstacles
+ *      sphObsMat:  (double) [nWorkDims+1,nSphObs] matrix storing position and radius of sphereical obstacles
+ *		bounds:		(double) [nWorkDims,2] matrix containing the environmental bounds
  * 		outNeighbor:	(cell array of uint32) contains a sorted list of outgoing neighbors
  * 		inNeighbor:		(cell array of uint32) contains a sorted list of incoming neighbors
  * 		nGoalSamples:	(int) number of samples from goal region
@@ -28,12 +29,7 @@
 */
 
 #include "mex.h"
-#include "matrix.h"
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <limits>
-#include <stdint.h>
+#include "RunCollisionCheck.h"
 
 typedef std::vector<uint32_t>::size_type uint_vec_size;
 typedef std::vector<uint32_t>::iterator uint_vec_iter;
@@ -149,130 +145,6 @@ void intersectSortedArrayAndVector(uint32_t nArr, uint32_t * arr,
 
 }
 
-/* test for line segment collision with obstacle faces */
-bool faceContainsProjection(const uint32_t nConfDims, 
-							const std::vector<double>& v, const std::vector<double>& v_to_w, 
-							const double lambda, int j, const std::vector<double>& obs)
-{
-	for (int d = 0; d < nConfDims; ++d) {
-		double projection = v[d] + v_to_w[d]*lambda;
-		if (d != j && !(obs[d] <= projection && 
-			projection <= obs[nConfDims+d]))
-			return false;
-	}
-	return true;
-}
-
-/* test for collision with obstacle */
-// Could this be improved by recording which obstacles violate the bounding box
-//	and only passing those to motionValid?
-bool motionValidQ(	const uint32_t nConfDims, 
-					const std::vector<double>& v, const std::vector<double>& w,
-                    const std::vector<double>& obs)
-{
-	std::vector<double> v_to_w(nConfDims);
-	for (int d = 0; d < nConfDims; ++d) {
-		v_to_w[d] = w[d] - v[d];
-	}
-
-	for (int d = 0; d < nConfDims; ++d) {
-		double lambda;
-		if (v[d] < obs[d]) {
-			lambda = (obs[d] - v[d])/v_to_w[d];
-		} else {
-			lambda = (obs[nConfDims + d] - v[d])/v_to_w[d];
-		}
-		if (faceContainsProjection(nConfDims, v, v_to_w, lambda, d, obs))
-			return false;
-	}
-	return true;
-}
-
-/* test for bounding box proximity to obstacles */
-// Could this be improved by recording which obstacles violate the bounding box
-//	and only passing those to motionValid?
-bool broadphaseValidQ(	const uint32_t nConfDims, 
-						const std::vector<double>& bb_min, const std::vector<double>& bb_max, 
-						const std::vector<double>& obs)
-{
-	for (int d = 0; d < nConfDims; ++d) {
-		if (bb_max[d] <= obs[d] || obs[nConfDims+d] <= bb_min[d]) 
-			return true;
-	}
-	return false;
-}
-
-bool isMotionValid(	const uint32_t nConfDims, 
-                    const std::vector<double>& v, const std::vector<double>& w,
-                    const std::vector<double>& bb_min, const std::vector<double>& bb_max,
-					int obstaclesCount, const double *obstacles)
-{
-	// go through each obstacle and do broad then narrow phase collision checking
-	for (int obs_idx = 0; obs_idx < obstaclesCount; ++obs_idx) {
-		std::vector<double> obs(nConfDims*2);
-		for (int d = 0; d < nConfDims; ++d) {
-			obs[d] = obstacles[obs_idx*2*nConfDims + d];
-			obs[nConfDims+d] = obstacles[obs_idx*2*nConfDims + nConfDims + d];
-		}
-	
-		if (!broadphaseValidQ(nConfDims, bb_min, bb_max, obs)) {
-			if (!motionValidQ(nConfDims, v, w, obs)) {
-				return false;
-			}
-		} 
-	}
-	return true;
-}
-
-/* collision checker */
-/*
- * INPUTS:
- *      obs:        [nConfDims,2*nObs] matrix storing upper and lower vertices of m obstacles
- *      bounds:     [nConfDims,2] matrix containing the environmental bounds
-*/
-bool checkCollision(const uint32_t nConfDims, const uint64_t nBVPs,
-                    const double * trajMat,
-					const uint64_t vInd, const uint64_t wInd, 
-					const uint32_t nObs, const double * obs,
-					const double * bounds)
-{
-    /* initialize output */
-    bool valid = true;
-
-    /* extract nodes and calculate bounds of the bounding box */
-    std::vector<double> v(nConfDims);
-    std::vector<double> w(nConfDims);
-    std::vector<double> bb_min(nConfDims);
-    std::vector<double> bb_max(nConfDims);
-    for (uint32_t d = 0; d < nConfDims; ++d) {
-        v[d] = trajMat[vInd + d*nBVPs];
-        w[d] = trajMat[wInd + d*nBVPs];
-       if (v[d] > w[d]) {
-    		bb_min[d] = w[d];
-    		bb_max[d] = v[d];
-    	} else {
-    		bb_min[d] = v[d];
-    		bb_max[d] = w[d];
-    	}
-    }
-
-    /* check spacial boundaries */
-	for (int i = 0; i < nConfDims; i++) {
-		if (bb_min[i] < bounds[i] || bb_max[i] > bounds[i+nConfDims]) {
-			valid = false;
-			return valid;
-		}
-	}
-    
-    /* check obstacles */
-    valid = isMotionValid(nConfDims, v, w, bb_min, bb_max, nObs, obs);
-    if (!valid) {
-        return valid;
-    }
-
-	return valid;
-}
-
 /* insert sorted nufrontier in sorted frontier and remove pivot */
 void processFrontier(   const std::vector<uint32_t>& nuVec, std::vector<uint32_t>& baseVec,
                         uint32_t& pivot, const std::vector<double>& cost2Come)
@@ -370,22 +242,27 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     const uint64_t * evalMat 	= 	(uint64_t *)mxGetData(prhs[0]);
     const double * costMat 	= 	mxGetPr(prhs[1]);
     const double * trajMat 	= 	mxGetPr(prhs[2]);
-    const double * obsMat 	= 	mxGetPr(prhs[3]);
+    const uint32_t nWorkDims	=	(int)mxGetScalar(prhs[3]);
     const double * bounds	= 	mxGetPr(prhs[4]);
-    const mxArray * outNeighborIDs		=	prhs[5];
-    const mxArray * inNeighborIDs		= 	prhs[6];
-    const uint32_t nGoalSamples	=	(int)mxGetScalar(prhs[7]);
+    const double * obsMat 	= 	mxGetPr(prhs[5]);
+    const double * sphObsMat    = mxGetPr(prhs[6]);
+    const mxArray * outNeighborIDs		=	prhs[7];
+    const mxArray * inNeighborIDs		= 	prhs[8];
+    const uint32_t nGoalSamples	=	(int)mxGetScalar(prhs[9]);
     const int * evalMatDims =	mxGetDimensions(prhs[0]);
     const int * costMatDims =   mxGetDimensions(prhs[1]); 
     const int * trajMatDims	=	mxGetDimensions(prhs[2]);
-    const int * obsMatDims	= 	mxGetDimensions(prhs[3]);
-    const uint32_t  costMatLen  =   costMatDims[0];
+    const int * boundsDims      = mxGetDimensions(prhs[4]);
+    const int * obsMatDims	= 	mxGetDimensions(prhs[5]);
+    const int * sphObsMatDims   = mxGetDimensions(prhs[6]);
+    const uint32_t costMatLen   =   costMatDims[0];
     const uint32_t nSamples 	=	evalMatDims[0];
-    const uint64_t nBVPs   =	trajMatDims[0];
+    const uint64_t nBVPs        =	trajMatDims[0];
     const uint32_t nStateDims	=	trajMatDims[1];
     const uint32_t nTrajNodes	=	trajMatDims[2];
-    const uint32_t nConfDims	=	obsMatDims[0];
     const uint32_t nObs			=	obsMatDims[1]/2;
+    const uint32_t nSphObs      =   sphObsMatDims[1];
+    const uint32_t nBounds      =   boundsDims[0];
     
 //     for (uint32_t i = 0; i < nSamples*nSamples; ++i){
 //         mexPrintf("DEBUG: evalMat(%d) = %d\n", i, evalMat[i]);
@@ -394,6 +271,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     /*********************/
     /* Prepare variables */
     /*********************/
+    bool failID = false;
     const uint32_t Xstart = 1;       // start state
 
     /* goal states */
@@ -489,8 +367,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                 uint64_t vInd = yMinxBVP-1 + nodeInd*nBVPs*nStateDims;
                 uint64_t wInd = vInd + nBVPs*nStateDims;
 //                 mexPrintf("DEBUG: collision check: vInd=%d, wInd=%d \n", vInd, wInd);
-                collisionFree = checkCollision(nConfDims, nBVPs, trajMat, vInd, wInd, 
-					                                nObs, obsMat, bounds);
+                collisionFree = runCollisionCheck(nWorkDims, nBVPs, trajMat, vInd, wInd,  
+					                                nBounds, bounds, nObs, obsMat, nSphObs, sphObsMat);
 //                 mexPrintf("DEBUG: collision check: y=%d, x=%d, nodeInd=%d: %d\n", yMin, x, nodeInd, collisionFree);
 
                 /* if any segment is in collision, break */
@@ -541,8 +419,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         /*  check for failure condition */
         if (frontSet.size() == 0){
             // Should move print statement outside of timed function to not affect computation time
-            mexPrintf("DEBUG: FMT FAILURE: frontier set has emptied before Xgoal reached\n");
-            
+            mexPrintf("k-FMT FAILURE: frontier set has emptied before Xgoal reached\n");
+            failID = true;
             /* fill failed outputs */
             // TO BE COMPLETED
             break;
@@ -554,33 +432,31 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 //         mexPrintf("DEBUG: edgeSet[%d] = %d\n", i, edgeSet[i]);
 //     }
     
-    /* return optimal path from tree */
-    std::vector<uint32_t> optPath;
-    optPath.reserve(nSamples);      // at most, the tree can have nSamples
-    getOptimalPath(parents, Xstart, z, optPath);
-    
-//     for (int i = 0; i < optPath.size(); ++i) {
-//         mexPrintf("DEBUG: optPath[%d] = %d\n", i, optPath[i]);
-//     }
-//     
-//     for (int i = 0; i < cost2Come.size(); ++i) {
-//         mexPrintf("DEBUG: cost2Come[%d] = %d\n", i, (int)(1000.0*cost2Come[i]));
-//     }
-
     /*****************/
     /* Format output */
     /*****************/
-    //plhs[0] = getMexUnsignedIntArray(unexSet);
-    //plhs[0] = mxCreateLogicalScalar(true);
-    /* optimal path */
-    plhs[0] = mxCreateNumericMatrix(optPath.size(), 1, mxUINT32_CLASS, mxREAL);
-    uint32_t * optPathOutput = (uint32_t *)mxGetData(plhs[0]);
-    for (uint32_t i = 0; i < optPath.size(); ++i){
-        optPathOutput[i] = optPath.at(i);
-    }
     
-    /* optimal cost */
-    plhs[1] = mxCreateDoubleScalar(cost2Come.at(z-1));
+    
+    if (!failID){
+        /* return optimal path from tree */
+        std::vector<uint32_t> optPath;
+        optPath.reserve(nSamples);      // at most, the tree can have nSamples
+        getOptimalPath(parents, Xstart, z, optPath);
+    
+        /* optimal path */
+        plhs[0] = mxCreateNumericMatrix(optPath.size(), 1, mxUINT32_CLASS, mxREAL);
+        uint32_t * optPathOutput = (uint32_t *)mxGetData(plhs[0]);
+        for (uint32_t i = 0; i < optPath.size(); ++i){
+            optPathOutput[i] = optPath.at(i);
+        }
+
+        /* optimal cost */
+        plhs[1] = mxCreateDoubleScalar(cost2Come.at(z-1));
+        
+    } else {
+        plhs[0] = mxCreateNumericMatrix(0, 1, mxUINT32_CLASS, mxREAL);
+        plhs[1] = mxCreateDoubleScalar(0.0);
+    }
     
     /* exploration tree */
     plhs[2] = mxCreateNumericMatrix(parents.size(), 1, mxUINT32_CLASS, mxREAL);
@@ -588,6 +464,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     for (uint32_t i = 0; i < parents.size(); ++i){
         parentsOutput[i] = parents.at(i);
     }
+    
+    /* failure boolean */
+    plhs[3] = mxCreateLogicalScalar(failID);
     
     return;
 }

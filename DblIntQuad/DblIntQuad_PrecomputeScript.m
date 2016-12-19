@@ -32,25 +32,25 @@ addpath([pwd, '/../../../../planningdata/GenKinoFMT/']);
 addpath([pwd, '/../AgileQuad/']);   % smoother
 
 
-%% Set Motion Planning Options
+%%% Set Motion Planning Options
 
 % Data Storage
-savefile = '../../../../planningdata/GenKinoFMT/DblIntQuad_20151112_1000x50000x5';
+savefile = '../../../../planningdata/GenKinoFMT/DblIntQuad_20160303_250x31250x5';
 % Note on naming scheme: 
 %       (system)_(nSamples)x(nTot2PBVPs)x(nTrajNodes)_(YYYY)-(MM)-(DD)
 
 % Sampling Options
-sampling.nSamples = 1000;      %(#) number of sampled nodes in state space
+sampling.nSamples = 250;      %(#) number of sampled nodes in state space
 sampling.nGoalSamples = 1;      %(#) number of samples from goal region
-sampling.nTot2PBVPs = 50000;	%(#) number of 2pt BVPs to solve for trainng ML
+sampling.nTot2PBVPs = 31250;	%(#) number of 2pt BVPs to solve for trainng ML
 sampling.nTrajNodes = 5;	%(#) number of disctrete points for optimal control subproblems
 sampling.stateSampleRange = [
-                    -0.5       2.5;...        %(m m) range to sample x
-                    0       4;...        %(m m) range to sample y
-                    -2.0	-1.0;...        %(m m) range to sample z
-                   	-1.0 1.0;...        %(m/s) range to sample vx
-                    -1.0 1.0;...        %(m/s) range to sample vy
-                    -1.0 1.0];          %(m/s) range to sample vz  
+                    0.0     20.0;...        %(m m) range to sample x
+                    0.0     4.0;...        %(m m) range to sample y
+                    0.0     4.0;...        %(m m) range to sample z
+                   	-3.0    3.0;...        %(m/s) range to sample vx
+                    -3.0    3.0;...        %(m/s) range to sample vy
+                    -3.0    3.0];          %(m/s) range to sample vz  
 % Robot Parameters
 robot.mass = 0.9574;           %(kg) quadrotor mass
 robot.thrustMax = 30;       %(N) maximum thrust
@@ -97,9 +97,6 @@ definitionsFunction = @DblIntQuadDefinitions;
 % Communication options
 % comms.commpath = '/../../AgileQuad/ViconWifiComm/
 comms.commfile = '../../AgileQuad/ViconWifiComm/Debug/trajectory.txt';
-comms.xmit = true;
-comms.tcpPort = 10000;  % ensure this alligns with PLANNER_PORT in CommLevel.h
-comms.tcpTimeout = 1;   % [s] time until tcp connection attempt times out
 % CommsWriter set in systemDefs
 
 % Consolidate Information

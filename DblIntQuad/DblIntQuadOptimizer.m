@@ -143,6 +143,17 @@ d_tau = G_tau\(Xf-xbar_tau);
 fval = tau + (Xf - xbar_tau)'*d_tau;
 
 % calculate optimal trajectory at discrete times
+sol.x = zeros(probinfo.numerics.n_nodes,1);
+sol.y = zeros(probinfo.numerics.n_nodes,1);
+sol.z = zeros(probinfo.numerics.n_nodes,1);
+sol.vx = zeros(probinfo.numerics.n_nodes,1);
+sol.vy = zeros(probinfo.numerics.n_nodes,1);
+sol.vz = zeros(probinfo.numerics.n_nodes,1);
+sol.optTraj = zeros(6,probinfo.numerics.n_nodes);
+sol.ax = zeros(probinfo.numerics.n_nodes,1);
+sol.ay = zeros(probinfo.numerics.n_nodes,1);
+sol.az = zeros(probinfo.numerics.n_nodes,1);
+sol.optCtrl = zeros(3,probinfo.numerics.n_nodes);
 for i = 1:probinfo.numerics.n_nodes
 
     % optimal cost
@@ -162,6 +173,7 @@ for i = 1:probinfo.numerics.n_nodes
     sol.vx(i,1) = optState_ti(4,1);
     sol.vy(i,1) = optState_ti(5,1);
     sol.vz(i,1) = optState_ti(6,1);
+    sol.optTraj(:,i) = optState_ti;
 
     % optimal control
     optControl_ti = DblIntQuadOptControl(sol.t(i), tau, X0,...
@@ -169,6 +181,7 @@ for i = 1:probinfo.numerics.n_nodes
     sol.ax(i,1) = optControl_ti(1,1);
     sol.ay(i,1) = optControl_ti(2,1);
     sol.az(i,1) = optControl_ti(3,1);
+    sol.optCtrl(:,i) = optControl_ti;
 end
 
 % consolidate results
